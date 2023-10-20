@@ -3,11 +3,17 @@ import folium
 
 
 
-# Read the CSV file into a DataFrame
-df = pd.read_csv("filtered_data.csv")
+
+# Import data
+fullpath = r'C:\Users\claud\Documents\GitHub\Python_DSIA\Project\output\filtered_data.csv'
+df = pd.read_csv(fullpath)
+
+# Define the path to the output folder
+output_folder = r'C:\Users\claud\Documents\GitHub\Python_DSIA\Project\output'
+map_path = r'C:\Users\claud\Documents\GitHub\Python_DSIA\Project\output\map.html'
 
 # Specify the specific date you want to find
-specific_date = 20080101
+specific_date = 20160101
 
 # Filter the DataFrame to select rows with the specific date
 specific_df = df[df["data"] == specific_date]
@@ -22,7 +28,7 @@ for _, row in specific_df.iterrows():
     unique_coordinates.add(coordinate_pair)
 
 # Create a folium map centered around the first unique pair
-m = folium.Map(location=unique_coordinates.pop(), zoom_start=10)
+m = folium.Map(location = unique_coordinates.pop(), zoom_start=10)
 
 # Add markers for the unique pairs on the map
 for pair in unique_coordinates:
@@ -32,4 +38,5 @@ for pair in unique_coordinates:
     ).add_to(m)
 
 # Save the map to an HTML file
-m.save("map.html")
+
+m.save(map_path)
