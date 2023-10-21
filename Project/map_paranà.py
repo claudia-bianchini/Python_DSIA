@@ -33,7 +33,7 @@ year = '2016'
 specific_df = df[df["year"] == year]
 print(specific_df)
 #print(type(specific_df['latitude'].iloc[10]))
-
+print(type(df_soja['codigo_ibge'].iloc[2])) 
 # Unique coordinates
 df = df.drop_duplicates(subset=['latitude', 'longitude'])
 print(specific_df)
@@ -47,7 +47,7 @@ for index, row in specific_df.iterrows():
     except: pass
 
 # Ensure the 'name_ibge' column is of data type str
-specific_df['name_ibge'] = specific_df['name_ibge'].astype(str)
+specific_df['name_ibge'] = specific_df['name_ibge'].str.strip()
 #print(specific_df)
 
 # Add the soja production to the main dataset (if present)
