@@ -5,39 +5,19 @@ from datetime import datetime
 from html.parser import HTMLParser
 from urllib.request import Request, urlopen
        
-# class update_Parser(HTMLParser):
-#     def __init__(self):
-#         super().__init__()
-#         self.date = []
-#         self.in_tag_container = False
-
-#     def handle_starttag(self, tag, attrs):
-#         if tag == 'span':# and any(name == 'class' and value == 'sc-hLzWsc fWyBop' for name, value in attrs):
-#             print(attrs)
-#             self.in_tag_container = True
-#             #date = (value for name, value in attrs if name == 'title')
-#             #self.date.append(date.strip())
-#             #self.date.append(datetime.strptime(date, '%a %b %d %Y %H:%M:%S GMT%z (%Z)'))# Adjust the date format
-#             #self.in_tag_container = True
-
-#     def handle_endtag(self, tag):
-#         if tag == 'span' and self.in_tag_container:
-#             self.in_tag_container = False
-
-#     def handle_data(self, data):
-#         if self.in_tag_container:
-#             self.date.append(data.strip())
 
 class update_Parser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.date = []
         self.in_tag_container = False
+        self.container = []
 
     def handle_starttag(self, tag, attrs):
+        print(f'{tag}, : {attrs}')
         if tag == 'span':
             for name, value in attrs:
-                if name == 'class' and value == 'sc-hLzWsc fWyBop':
+                if name == 'class' and value == "sc-hhGHuG sc-gXSCqU iIhleq fyPHTK":#'sc-hLzWsc fWyBop':
                     self.in_tag_container = True
                 elif name == 'title' and self.in_tag_container:
                     self.date.append(value)
@@ -48,9 +28,8 @@ class update_Parser(HTMLParser):
 
     def handle_data(self, data):
         if self.in_tag_container:
-            #self.date.append(data.strip())
-            pass
-
+            self.container.append(data.strip())
+            #pass
 
 
 
@@ -78,14 +57,14 @@ def get_last_update_date(url):
             soup = BeautifulSoup(page_content, 'html.parser')
             
             # Find the span tag with the specific class
-            selector = ('div.sc-dQelHR.iMCzUG > div > div.sc-cArzPw.ieazTD > div.sc-bSgIji.ciTtSM > span > span:nth-child(2) > span')
+            selector = ('#site-content > div.sc-dQelHR.iMCzUG > div > div.sc-cArzPw.ieazTD > div.sc-bSgIji.ciTtSM > span > span:nth-child(2) > span')
 
-            date_element = soup.find(selector, class_='sc-hLzWsc fWyBop')
+            date_element = soup.select_one(selector)
             print(date_element)
             if date_element:
                 # Extract the date from the title attribute
-                date_str = date_element.get[0]('title')
-                print(date_str)
+                date_str = date_element.get('title')
+                #print(date_str)
                 return date_str
             else:
                 print('No matching elements found on the webpage.')
@@ -97,10 +76,9 @@ def get_last_update_date(url):
 
 
 def scrap_page(page_content):
-    print(page_content)
     parser = update_Parser()
     parser.feed(page_content)
-    return parser.date
+    return parser.container
 
 def main():
     try:
@@ -132,8 +110,8 @@ def main():
         last_checked_date = datetime(2000, 1, 1)
 
         # Get the last update date from the webpage
-        # update_date = get_last_update_date(url)
-        update_date = scrap_page(page_content)
+        update_date = get_last_update_date(url)
+        #update_date = scrap_page(page_content)
         print('C\'è qualcosa?', update_date)
 
     except Exception as e:
