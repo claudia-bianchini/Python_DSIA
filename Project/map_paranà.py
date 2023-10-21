@@ -35,16 +35,17 @@ print(specific_df)
 #print(type(specific_df['latitude'].iloc[10]))
 print(type(df_soja['codigo_ibge'].iloc[2])) 
 # Unique coordinates
-df = df.drop_duplicates(subset=['latitude', 'longitude'])
+df = df.drop_duplicates(subset=[df['latitude'], df['longitude']])
 print(specific_df)
 #Add to the Filtered Dataframe another column with the name of the minicipal
-for index, row in specific_df.iterrows():
-    try:
-        for soja_index, soja_row in df_soja.iterrows():
-            if row['codigo_ibge'] == soja_row['codigo_ibge']:
-                specific_df.at[index, 'name_ibge'] = soja_row['name']
-                specific_df.at[index, year] = soja_row[year]
-    except: pass
+specific_df = specific_df.merge(df_soja[['codigo_ibge', 'name']], on='codigo_ibge', how='left')
+# for index, row in specific_df.iterrows():
+#     try:
+#         for soja_index, soja_row in df_soja.iterrows():
+#             if row['codigo_ibge'] == soja_row['codigo_ibge']:
+#                 specific_df.at[index, 'name_ibge'] = soja_row['name']
+#                 specific_df.at[index, year] = soja_row[year]
+#     except: pass
 
 # Ensure the 'name_ibge' column is of data type str
 specific_df['name_ibge'] = specific_df['name_ibge'].str.strip()
