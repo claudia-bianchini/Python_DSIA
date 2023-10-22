@@ -125,23 +125,33 @@ specific_df['name_ibge'] = specific_df['name_ibge'].str.strip()
 # Create a folium map centered around the first unique pair
 
 if not specific_df.empty:
-    m = folium.Map(location=[specific_df.iloc[1]['latitude'], specific_df.iloc[1]['longitude']], zoom_start=10)
-
+    m = folium.Map(
+        location=[specific_df.iloc[1]['latitude'], specific_df.iloc[1]['longitude']],
+        zoom_start=7
+        )
     # Draw circles for the unique pairs on the map
     for index, row in specific_df.iterrows():
         unique_pair = (row['latitude'], row['longitude'])
         color = color_dict.get(unique_pair, 'blue') # Provide a default color if needed
         folium.CircleMarker(
             location= unique_pair,  #(row['latitude'], row['longitude']),
-            popup=f"{row['name_ibge']}, Latitude: {row['latitude']} Longitude: {row['longitude']}",
+            popup=f"Average TS: TROVA TEMP MEDIA °C, Productivity: {row['production']}", # Latitude: {row['latitude']} Longitude: {row['longitude']}",
+            tooltip=f"{row['name_ibge']}",
             radius= row['production']/500,  # Radius in meters
             color=color, #(value for key, value in color.items() if key == row['codigo_ibge']),
             fill=True,
             fill_color=color, #(value for key, value in color.items() if key == row['codigo_ibge']),
-            fill_opacity = 0.2           
+            fill_opacity = 0.2,
+            line_opacity = 0.8,
+                key_on = '',
+                legend_name = "Average skin temperature of Earh (TS) [°C]"           
         ).add_to(m)
 
+    folium.map.LayerControl('topleft', collapsed= False).add_to(m)
+    
     # Save the map to an HTML file
     m.save(map_path)
 else:
     print("DataFrame is empty, cannot create the map.")
+
+print(sum(specific_df['production']))

@@ -63,8 +63,7 @@ def get_last_update_date(url):
             print(date_element)
             if date_element:
                 # Extract the date from the title attribute
-                date_str = date_element.get('title')
-                #print(date_str)
+                date_str = date_element.get_text()#('title')
                 return date_str
             else:
                 print('No matching elements found on the webpage.')
@@ -74,11 +73,11 @@ def get_last_update_date(url):
         print('Error:', e)
     return None
 
-
 def scrap_page(page_content):
     parser = update_Parser()
     parser.feed(page_content)
     return parser.container
+
 
 def main():
     try:
