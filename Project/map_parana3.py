@@ -45,7 +45,7 @@ def color_scale2(dataframe, var, year):
         # Store the color as a string in the format 'rgb(xxx,xxx,xxx)'
         color_dict[(row['latitude'], row['longitude'])] = color
 
-    return color_dict
+    return [color_dict, colormap]
 
 
 def rename_col(dataframe, rename_dictionary):
@@ -97,10 +97,7 @@ specific_df = df[df["year"] == year]
 
 # Define parameter for the map realization
 # Define a color scale scale 
-color_dict = color_scale2(specific_df, 'TS', year)
-
-
-
+[color_dict, colormap] = color_scale2(specific_df, 'TS', year)
 
 # Unique coordinates
 specific_df = specific_df.drop_duplicates(subset=['latitude', 'longitude'])
@@ -130,28 +127,53 @@ if not specific_df.empty:
         zoom_start=7
         )
     # Draw circles for the unique pairs on the map
+    print('Let\'s draw')
     for index, row in specific_df.iterrows():
         unique_pair = (row['latitude'], row['longitude'])
         color = color_dict.get(unique_pair, 'blue') # Provide a default color if needed
         folium.CircleMarker(
             location= unique_pair,  #(row['latitude'], row['longitude']),
+            name = 'Paranà - Brasil',
             popup=f"Average TS: TROVA TEMP MEDIA °C, Productivity: {row['production']}", # Latitude: {row['latitude']} Longitude: {row['longitude']}",
             tooltip=f"{row['name_ibge']}",
             radius= row['production']/500,  # Radius in meters
             color=color, #(value for key, value in color.items() if key == row['codigo_ibge']),
             fill=True,
-            fill_color=color, #(value for key, value in color.items() if key == row['codigo_ibge']),
+            fill_color = color, #(value for key, value in color.items() if key == row['codigo_ibge']),
             fill_opacity = 0.2,
-            line_opacity = 0.8,
-                key_on = '',
-                legend_name = "Average skin temperature of Earh (TS) [°C]"           
+            line_opacity = 0.8,         
         ).add_to(m)
+
+
+    # Add the colormap to the map
+    # print(color_dict)
+    colormap.add_to(m)
+    # Add a comment to the caption
+    colormap.caption = f'Average Skin Earth temperature \'TS\' in {year}'
+
+    # Add a legend to the map
+    m.get_root().html.add_child(folium.Element(f"""<div style="
+        position: fixed; 
+        bottom: 50px; 
+        left: 50px; 
+        width: 150px; 
+        height: 100px; 
+        background-color: white; 
+        border: 1px solid grey; 
+        z-index: 1000; 
+        padding: 5px;">
+        <p><strong>Legend</strong></p>
+        
+    </div>"""))
+
+
 
     folium.map.LayerControl('topleft', collapsed= False).add_to(m)
     
     # Save the map to an HTML file
     m.save(map_path)
+
 else:
     print("DataFrame is empty, cannot create the map.")
 
-print(sum(specific_df['production']))
+#print(sum(specific_df['production']))
