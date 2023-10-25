@@ -4,6 +4,11 @@ from matplotlib import colors as mcols
 from branca.colormap import LinearColormap
 from collections import defaultdict
 
+# For the cursor
+from ipywidgets import interact, IntSlider, interactive, Output
+import matplotlib.pyplot as plt
+from IPython.display import display, clear_output
+
 def assign_date(dataframe):
 # Make sure the date column is in datetime format
     dataframe['year'] = dataframe['data'].astype(str).str[:4]
@@ -13,25 +18,28 @@ def assign_date(dataframe):
     return dataframe
 
 
+def update_map(selected_year):
+        # Filter the dataset for the selected year
+        filtered_data = dataset[dataset['Year'] == selected_year]
+
+        # Create a map with Folium
+        m = folium.Map(location=[your_lat, your_lon], zoom_start=your_initial_zoom)
+
+        # Add your map markers or custom visualization based on the filtered data
+        # For example:
+        for index, row in filtered_data.iterrows():
+            folium.Marker(
+                location=[row['Latitude'], row['Longitude']],
+                popup=row['YourPopupContent'],
+            ).add_to(m)
+
+        with output_widget:
+            clear_output(wait=True)
+            display(m)
+
 # Define a colormap with a continuous scale of colors
+
 def color_scale(dataframe, var, year):
-    dataframe = dataframe.groupby(['codigo_ibge'])
-    average_var = (dataframe['codigo_ibge'], dataframe[var].mean())
-    colormap = LinearColormap(['yellow', 'orange', 'red'], vmin=min(average_var, key=lambda x: x[1]), vmax=max(average_var, key=lambda x: x[1]))
-    
-    #average_var = dataframe.groupby(['latitude', 'longitude'])[var].mean()
-    #colormap = LinearColormap(['yellow', 'orange', 'red'], vmin=average_var.min(), vmax=average_var.max())
-
-    # We have to create a dictionary because 'LinearColormap' is not natively JSON serializable
-    #color_dict = {value: colormap(value) for value in average_var}
-    color_dict = defaultdict(list)
-    for item in average_var:
-        color_dict[item[0]].append(item[1])
-    
-    return color_dict
-
-
-def color_scale2(dataframe, var, year):
     # Group the DataFrame by 'latitude' and 'longitude' and calculate the mean of 'var'
     grouped_data = dataframe.groupby(['latitude', 'longitude'])[var].mean().reset_index()
 
@@ -61,6 +69,16 @@ def rename_col(dataframe, rename_dictionary):
     """
     return dataframe.rename(columns=rename_dictionary)
 
+
+
+# Define a function to update CircleMarker sizes on zoom
+def update_circle_sizes(e):
+    zoom_level = e['target'].zoom
+    if zoom_level in circle_sizes:
+        circle_size = circle_sizes[zoom_level]
+        for feature in m.get_instantiate_features():
+            if isinstance(feature, folium.CircleMarker):
+                feature.radius = circle_size
 
 
 # Import data
@@ -97,7 +115,7 @@ specific_df = df[df["year"] == year]
 
 # Define parameter for the map realization
 # Define a color scale scale 
-[color_dict, colormap] = color_scale2(specific_df, 'TS', year)
+[color_dict, colormap] = color_scale(specific_df, 'TS', year)
 
 # Unique coordinates
 specific_df = specific_df.drop_duplicates(subset=['latitude', 'longitude'])
@@ -144,29 +162,65 @@ if not specific_df.empty:
             line_opacity = 0.8,         
         ).add_to(m)
 
+    # #Widget:
+    # # Create an Output widget to display the map
+    # output_widget = Output()
+    # # Get unique years from the dataset
+    # unique_years = specific_df['year'].unique()
+    
+    # # Create an interactive year selection slider
+    # year_slider = IntSlider(
+    #     value=min(unique_years),
+    #     min=min(unique_years),
+    #     max=max(unique_years),
+    #     step=1,
+    #     description='Select Year:',
+    # )
+    # # Connect the slider to the update_map function
+    # interactive_plot = interactive(update_map, selected_year=year_slider)
+    # output_widget.clear_output(wait=True)
+
+    
+
+    # # Display the year selection widget and map
+    # display(year_slider, output_widget)
+
+    # Ottieni gli anni unici dal dataset
+    unique_years = sorted(specific_df['year'].unique())
+    # Crea uno slider interattivo per la selezione dell'anno
+    interact(update_map, selected_year=IntSlider(value=min(unique_years), min=min(unique_years), max=max(unique_years)))
+
+    # # Add a ZoomControl to the map
+    # m.add_child(folium.plugins.ZoomControl())
+
+
+    # Bind the update_circle_sizes function to the zoom event
+    # m.get_root().html.add_child(folium.Element('<div id="map" style="width:100%;height:100%;"></div>'))
+    # m.get_root().script.add_child(folium.Element("document.getElementById('map').onmouseover = function() {"
+    # "map.scrollWheelZoom.enable();"
+    # "map.on('zoomend', function(e) {"
+    # "var target = document.getElementById('map');"
+    # "var zoom_level = target._leaflet_map.getZoom();"
+    # "window.update_circle_sizes({ target: target, zoom: zoom_level });"
+    # "});"
+    # "};"))
 
     # Add the colormap to the map
-    # print(color_dict)
     colormap.add_to(m)
     # Add a comment to the caption
-    colormap.caption = f'Average Skin Earth temperature \'TS\' in {year}'
+    colormap.caption = f'Average Skin Earth temperature \'TS\' in {year} [°C]'
 
-    # Add a legend to the map
-    m.get_root().html.add_child(folium.Element(f"""<div style="
-        position: fixed; 
-        bottom: 50px; 
-        left: 50px; 
-        width: 150px; 
-        height: 100px; 
-        background-color: white; 
-        border: 1px solid grey; 
-        z-index: 1000; 
-        padding: 5px;">
+    # Define a custom HTML legend
+    legend_html = """
+    <div style="position: fixed; bottom: 50px; left: 50px; width: 220px; z-index:1000; background-color: white; padding: 10px; border: 1px solid grey;">
         <p><strong>Legend</strong></p>
-        
-    </div>"""))
+        <p>CircleMarker Radius:</p>
+        <p style="font-size: 12px;">Radius is proportional to Productivity.</p>
+    </div>
+    """
 
-
+    # Add the custom HTML legend to the map
+    m.get_root().html.add_child(folium.Element(legend_html))
 
     folium.map.LayerControl('topleft', collapsed= False).add_to(m)
     
@@ -177,3 +231,9 @@ else:
     print("DataFrame is empty, cannot create the map.")
 
 #print(sum(specific_df['production']))
+
+
+
+
+    # # Display the year selection widget and map
+    # display(year_slider, output_widget)
