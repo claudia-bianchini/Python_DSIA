@@ -6,6 +6,7 @@ import pandas as pd
 import folium
 import dash_folium
 
+
 # Define a function to create the map
 def create_map(df, color_dict, colormap):
     if not df.empty:
@@ -16,7 +17,7 @@ def create_map(df, color_dict, colormap):
         
         for index, row in df.iterrows():
             unique_pair = (row['latitude'], row['longitude'])
-            color = color_dict.get(unique_pair, 'blue')
+            color = color_dict.get(unique_pair, 'blue') # default value if something doen't work
             
             folium.CircleMarker(
                 location=unique_pair,
@@ -52,15 +53,7 @@ def create_map(df, color_dict, colormap):
     
     return m
 
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output
-import pandas as pd
-import folium
-import dash_folium
 
-# Rest of your code ...
 
 # Define the main function
 def main():
@@ -71,9 +64,6 @@ def main():
     path_soja_data = r'C:\Users\claud\Documents\GitHub\Python_DSIA\Project\input\produtividade_soja.csv'
     df_soja = pd.read_csv(path_soja_data)
 
-    # Rename columns
-    columns_rename = {'nivel ': 'nivel', 'codigo_ibge ': 'codigo_ibge', 'name ': 'name'}
-    df_soja = df_soja.rename(columns=columns_rename)
 
     # Unique coordinates
     subdata_unique_coord = df[['name_ibge', 'latitude', 'longitude']].drop_duplicates(subset=['name_ibge'])
@@ -101,14 +91,14 @@ def main():
         # Map component
         dcc.Graph(id='map'),
 
-        # Plotly chart
-        dcc.Graph(id='chart')
+        # # Plotly chart
+        # dcc.Graph(id='chart')
     ])
 
     # Callback to update the map and chart based on the selected variable
     @app.callback(
-        [Output('map', 'figure'), Output('chart', 'figure')],
-        [Input('variable-dropdown', 'value')]
+        [Output('map', 'figure')], # , Output('chart', 'figure')],
+        [Input('choose a year', 'years')]
     )
     
     def update_map_and_chart(selected_variable):

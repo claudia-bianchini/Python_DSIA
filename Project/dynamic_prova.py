@@ -50,7 +50,7 @@ def find_last_update(url):
     if data:
         check_last_update(data, url, driver)
     # Close the browser
-    driver.quit()
+    # driver.quit()
     
 
             
@@ -230,16 +230,27 @@ def download_dataset(dataset_url, driver):
     local_directory = "input"
     local_file_path = os.path.join(local_directory, "downloaded_dataset.zip")
 
+    # Set up for waiting:
+    wait = WebDriverWait(driver, 30)
+
     # Selectors:
     download_button_selector = "#site-content > div.sc-dQelHR.iMCzUG > div > div.sc-cArzPw.ieazTD > div.sc-bSgIji.ciTtSM > div > a > button"
-    id_sign_in = "#site-container > div > div.sc-kKQOHL.dyrYTA > div.sc-iGtWQ.hQbRdM > div.sc-cmtnDe.djqpYo > div > div:nth-child(1) > a > button"
-    #id_sign_in = "#site-container > div > div.sc-kKQOHL.dyrYTA > div.sc-iGtWQ.hVthTE > div.sc-cmtnDe.djqpYo > div > div:nth-child(1) > a > button"
+    # id_sign_in = "#site-container > div > div.sc-kKQOHL.dyrYTA > div.sc-iGtWQ.hQbRdM > div.sc-cmtnDe.djqpYo > div > div:nth-child(1) > a > button"
+    id_sign_in = "#site-container > div > div.sc-kKQOHL.dyrYTA > div.sc-iGtWQ.hVthTE > div.sc-cmtnDe.djqpYo > div > div:nth-child(1) > a > button"
     #id_sign_in = "#site-container > div > div.sc-kKQOHL.dyrYTA > div.sc-iGtWQ.hVthTE > div.sc-cmtnDe.djqpYo > div > div:nth-child > a > button"
     # id_sign_in = "#site-container > div > div.sc-kKQOHL.dyrYTA > div.sc-iGtWQ.hVthTE > div.sc-cmtnDe.djqpYo > div > div:nth-child(1) > a > button"
     # Check if the user is logged in by looking for a sign-out button
+    wait.until(EC.url_to_be(dataset_url))
     try:
         # If the user is already logged in, we won't see the login form
-        login_form = driver.find_element(By.ID, id_sign_in)
+        # login_form = driver.find_element(By.ID, id_sign_in)
+        # Wait for the "Sign In" button to become clickable
+        login_form = wait.until(
+        EC.element_to_be_clickable((By.XPATH, '//button[@class="sc-hjsqBZ gUCSFI"][role="button"]'))
+        )
+
+        # Click the "Sign In" button
+        login_form.click()
         # EC.element_to_be_clickable((By.ID, id_sign_in))
         #login_form = True
     except NoSuchElementException:
