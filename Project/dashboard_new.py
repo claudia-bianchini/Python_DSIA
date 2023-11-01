@@ -1,11 +1,30 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc, html
 from dash.dependencies import Input, Output
 import pandas as pd
 import folium
 from branca.colormap import LinearColormap
 from collections import defaultdict
+
+
+# Define a colormap with a continuous scale of colors
+
+def color_scale(dataframe, var):
+    # Group the DataFrame by 'latitude' and 'longitude' and calculate the mean of 'var'
+    #grouped_data = dataframe.groupby(['latitude', 'longitude'])[var].mean().reset_index()
+
+    # Create a LinearColormap with colors 'yellow', 'orange', and 'red' based on the range of 'var' means
+    colormap = LinearColormap(['purple', 'blue', 'yellow', 'orange', 'red'], vmin=dataframe[var].min(), vmax=dataframe[var].max())
+
+    # Create a dictionary to store colors for each unique pair of 'latitude' and 'longitude'
+    color_dict = defaultdict(str)
+    for index, row in dataframe.iterrows():
+        color = colormap(row[var])
+        # Store the color as a string in the format 'rgb(xxx,xxx,xxx)'
+        color_dict[(row['latitude'], row['longitude'])] = color
+
+    return [color_dict, colormap]
+
 
 # Define a function to create the map
 def create_map(df, color_dict, colormap):
@@ -17,11 +36,11 @@ def create_map(df, color_dict, colormap):
 
         for index, row in df.iterrows():
             unique_pair = (row['latitude'], row['longitude'])
-            color = color_dict.get(unique_pair, 'blue')
+            color = color_dict.get(unique_pair, 'green')
 
             folium.CircleMarker(
                 location=unique_pair,
-                popup=f"Year: {row['year']}",
+                popup=f"Name municìpios: {row['name_ibge']}",
                 radius=10,
                 color=color,
                 fill=True,
@@ -50,7 +69,11 @@ def create_map(df, color_dict, colormap):
     else:
         print("DataFrame is empty, cannot create the map.")
 
-    return m
+    # Convert the Folium map to an HTML string
+    map_html = m.get_root().render()
+    # print(map_html)
+    return map_html # [html.Div([dcc.Markdown(map_html)])]
+
 
 
 # Define the main function
@@ -61,11 +84,14 @@ def main():
 
     # Create a color scale
     color_dict = defaultdict(str)
-    colormap = LinearColormap(['yellow', 'orange', 'red'], vmin=0, vmax=10)
-
+    [color_dict, colormap] = color_scale(df, 'TS')
     # Initialize the Dash app
     app = dash.Dash(__name__)
 
+    # Assuming df contains 'year', 'month', and 'day' columns
+    years = df['year'].unique()
+    months = df['month'].unique()
+    days = df['day'].unique()
     # Define the layout of the dashboard
     app.layout = html.Div([
         html.H1("Dashboard with Map"),
@@ -74,43 +100,77 @@ def main():
         dcc.Dropdown(
             id='year-dropdown',
             options=[{'label': year, 'value': year} for year in df['year'].unique()],
-            value=df['year'].unique()[0]  # Initial value for the dropdown
+            value=df['year'].min()  # Initial value for the dropdown
         ),
 
-        # Map component
-        dcc.Graph(id='map')
+        # Displaying the selected year and current day
+        html.Div(id='display-selected-year'),
+        html.Div(id='display-selected-day'),
 
         # Interval component for automatic updates
         dcc.Interval(
             id='interval-component',
-            interval=5*1000,  # Update every 5 seconds
-            n_intervals=0
-        )
+            interval=15 * 1000,  # Update every 15 seconds
+            n_intervals=1
+        ),
+
+        # # Slider to select a month
+        # dcc.Slider(
+        #     id='month-slider',
+        #     min=months.min(),
+        #     max=months.max(),
+        #     marks={str(month): str(month) for month in months},
+        #     value=months.min(),  # Initial value for the slider
+        #     step=1
+        # ),
+
+        # # Slider to select a day
+        # dcc.Slider(
+        #     id='day-slider',
+        #     min=days.min(),
+        #     max=days.max(),
+        #     marks={str(day): str(day) for day in days},
+        #     value=days.min(),  # Initial value for the slider
+        #     step=1
+        # ),
+
+        # Map component
+        html.Iframe(id='map-iframe', width='100%', height='600')
+        # dcc.Graph(id='map'),
     ])
 
     # Callback to update the map based on the selected year
     @app.callback(
-        Output('map', 'figure'),
+        Output('map-iframe', 'srcDoc'),
         [Input('year-dropdown', 'value'), Input('interval-component', 'n_intervals')]
     )
+    
+    def update_map(selected_year, n):
+        # Convert the 'Your_Column' column from string to integer
+        df['year'] = df['year'].astype(int)
+        df['day'] = df['day'].astype(int)
+        # Calculate the current day based on the interval counter
+        filtered_data = df[(df['year'] == selected_year)] # & (df['day'] == n % df['day'].nunique() + 1)]
+        print(filtered_data)
+        # Get the selected year from the callback context
+        # year = dash.callback_context.triggered[0]['prop_id'].split('.')[0] 
+        if not filtered_data.empty:
+            # Create the color scale for the selected year
+            color_dict = defaultdict(str)
+            for index, row in filtered_data.iterrows():
+                color = colormap(row['TS'])  # Assuming 'TS' is the temperature data in your DataFrame
+                color_dict[(row['latitude'], row['longitude'])] = color
 
-    def update_map(selected_year):
-        # Filter the dataset for the selected year
-        selected_day = (n % df[df['year'] == selected_year]['day'].nunique()) + 1
-        filtered_data = df[(df['year'] == selected_year)& (df['day'] == selected_day)]
+            subdata_unique_coord = filtered_data[['name_ibge', 'latitude', 'longitude']].drop_duplicates()
+            #print(len(subdata_unique_coord))
+            # Create and return the map for the selected year
+            return create_map(subdata_unique_coord, color_dict, colormap)
 
-        # Create the color scale for the selected year
-        # You might need to adjust the color scale logic here based on your specific data and requirements
-
-        color_dict = defaultdict(str)
-        for index, row in filtered_data.iterrows():
-            color = colormap(row['TS'])  # Assuming 'TS' is the temperature data in your DataFrame
-            color_dict[(row['latitude'], row['longitude'])] = color
-
-        subdata_unique_coord = filtered_data[['latitude', 'longitude']].drop_duplicates()
-
-        # Create and return the map for the selected year
-        return create_map(subdata_unique_coord, color_dict, colormap)
+        else:
+            # If the filtered data is empty, return an empty map
+            empty_data = pd.DataFrame(columns=['latitude', 'longitude'])
+            print('filterd data empty')
+            return create_map(empty_data, defaultdict(str), colormap)
 
     # Run the app
     if __name__ == '__main__':
