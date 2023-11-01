@@ -109,7 +109,7 @@ def adjust_data(df, df_soja):
     df = drop_columns(df, columns_to_keep)
     print('Columns dropped')
     # Create a filtered dataset for agroclimatology.csv because produtividade_soja.csv has years only from 2004, 2017
-    range_years = (2004, 2005)
+    range_years = (2004, 2017)
     df = filter_rows(df, range_years)
     print('Not useful years dropped')
     # Define the season

@@ -90,7 +90,7 @@ def adjust_data(df, df_soja):
     columns_to_keep = ['year', 'month', 'day', 'codigo_ibge', 'latitude', 'longitude', 'TS', 'PS']
     df = drop_columns(df, columns_to_keep)
     # Create a filtered dataset for agroclimatology.csv because produtividade_soja.csv has years only from 2004, 2017
-    range_years = (2004, 2005)
+    range_years = (2004, 2017)
     df = filter_rows(df, range_years)
     # Define the season
     df = assign_seasons(df)
