@@ -3,16 +3,13 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.express as px
-import matplotlib.pyplot as plt
-from matplotlib import colors as mcols
 import io
 import base64
-import plotly.graph_objects as go 
+import plotly.graph_objects as go
+from matplotlib import colors as mcols
 
-import matplotlib
-matplotlib.use('Agg') 
 
-def divide_dataset(df):
+def devide_dataset(df):
     # Extract latitude and longitude
     latitudes = df['latitude']
     longitudes = df['longitude']
@@ -35,60 +32,28 @@ def divide_dataset(df):
     # Split the data into north and south regions based on longitudes
     east_data = df[df['longitude'] >= average_long]
     west_data = df[df['longitude'] < average_long]
-
     return [north_data, south_data, east_data, west_data]
 
-
-def convert_fig_to_plotly_image(fig):
-    img = io.BytesIO()
-    fig.savefig(img, format='png')
-    img.seek(0)
-    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
-
-
-# Create a function to update the histograms
 def update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year):
     north_var_season = north_data_year.get_group(selected_year)[north_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
     south_var_season = south_data_year.get_group(selected_year)[south_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
     east_var_season = east_data_year.get_group(selected_year)[east_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
     west_var_season = west_data_year.get_group(selected_year)[west_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
 
+    # Create histograms using Plotly graph objects
+    fig_NS = go.Figure()
+    fig_NS.add_trace(go.Histogram(x=north_var_season, name='North', marker_color = 'rgba(100, 0, 0, 0.5)', opacity = 0.6))
+    fig_NS.add_trace(go.Histogram(x=south_var_season, name='South', marker_color = 'rgba(0, 100, 0, 0.5)', opacity = 0.6))
 
-    # Common plot parameters
-    common_plot_params = {
-        'density': True,
-        'bins': 100,
-        'histtype': 'stepfilled'
-    }
+    fig_NS.update_layout(barmode='overlay', title=f'Year {selected_year}: {selected_var} Variation in North vs South Regions {selected_season}', xaxis_title=selected_var, yaxis_title='Events')
 
-    # Create subplots for both histograms
-    fig, axes = plt.subplots(1, 2, figsize=(18, 8))
+    fig_EW = go.Figure()
+    fig_EW.add_trace(go.Histogram(x=east_var_season, name='East', marker_color='rgba(100, 0, 0, 0.5)', opacity = 0.6))
+    fig_EW.add_trace(go.Histogram(x=west_var_season, name='West', marker_color='rgba(0, 100, 0, 0.5)', opacity = 0.6))
 
-    # Create a figure for North-South histogram
-    fig1, ax1 = plt.subplots(figsize=(12, 6))
-    ax1.hist(north_var_season, label='North', color=mcols.to_rgba('tab:blue', 0.2), edgecolor='tab:blue', **common_plot_params)
-    ax1.hist(south_var_season, label='South', color=mcols.to_rgba('tab:orange', 0.2), edgecolor='tab:orange', **common_plot_params)
-    ax1.set_xlabel(f'{selected_var}', fontsize=14)
-    ax1.set_ylabel('Events', fontsize=14)
-    ax1.set_title(f'Year {selected_year}: {selected_var} Variation in North vs South Regions {selected_season}', fontsize=16)
-    ax1.legend(frameon=False, loc='upper left')
+    fig_EW.update_layout(barmode='overlay', title=f'Year {selected_year}: {selected_var} Variation in East vs West Regions {selected_season}', xaxis_title=selected_var, yaxis_title='Events')
 
-    # Create a figure for East-West histogram
-    fig2, ax2 = plt.subplots(figsize=(12, 6))
-    ax2.hist(east_var_season, label='East', color=mcols.to_rgba('tab:purple', 0.2), edgecolor='tab:purple', **common_plot_params)
-    ax2.hist(west_var_season, label='West', color=mcols.to_rgba('tab:olive', 0.2), edgecolor='tab:olive', **common_plot_params)
-    ax2.set_xlabel(f'{selected_var}', fontsize=14)
-    ax2.set_ylabel('Events', fontsize=14)
-    ax2.set_title(f'Year {selected_year}: {selected_var} Variation in East vs West Regions {selected_season}', fontsize=16)
-    ax2.legend(frameon=False, loc='upper left')
-
-    # Adjust layout
-    plt.tight_layout()
-    # Convert Matplotlib figures to Plotly-compatible base64-encoded images
-    img1 = convert_fig_to_plotly_image(fig1)
-    img2 = convert_fig_to_plotly_image(fig2)
-    
-    return img1, img2
+    return fig_NS, fig_EW
 
 def main():
     # Import data
@@ -98,8 +63,8 @@ def main():
     # Histogram initialization
     df['year'] = df['year'].astype(str)
 
-    # Devide dataset depending on the position of the measurement
-    [north_data, south_data, east_data, west_data] = divide_dataset(df)
+    # Divide dataset depending on the position of the measurement
+    [north_data, south_data, east_data, west_data] = devide_dataset(df)
 
     # Groupby each dataset for the year
     north_data_year = north_data.groupby('year')
@@ -154,30 +119,25 @@ def main():
 
         dcc.Graph(
             id='north-hist',
-            config={'displayModeBar': False} ),
-        # dcc.Graph(id='south-hist'),
+            config={'displayModeBar': False}
+        ),
         dcc.Graph(
             id='east-hist',
-            config={'displayModeBar': False} ),
-        # dcc.Graph(id='west-hist')
+            config={'displayModeBar': False}
+        ),
     ])
     
     @app.callback(
         [Output('north-hist', 'figure'),
-        Output('east-hist', 'figure')],
+         Output('east-hist', 'figure')],
         [Input('year-dropdown', 'value'),
          Input('season-dropdown', 'value'),
          Input('var-dropdown', 'value')]
     )
     def update_graph(selected_year, selected_season, selected_var):
-        plotly_img_NS, plotly_img_EW = update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
+        fig_NS, fig_EW = update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
 
-        # Create Plotly figures using the base64-encoded images
-        plotly_fig_NS = go.Figure(go.Image(source=plotly_img_NS))
-        plotly_fig_EW = go.Figure(go.Image(source=plotly_img_EW))
-
-
-        return plotly_fig_NS, plotly_fig_EW 
+        return fig_NS, fig_EW
 
     if __name__ == '__main__':
         app.run_server(debug=True, use_reloader=False)
