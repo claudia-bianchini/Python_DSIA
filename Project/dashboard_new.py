@@ -76,8 +76,6 @@ def create_map(df, color_dict, colormap):
 
 
 
-# ... (Previous code remains the same)
-
 def main():
     # Import data
     path_filtered_data = './output/filtered_data.csv'

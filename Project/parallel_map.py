@@ -5,7 +5,10 @@ import pandas as pd
 import folium
 from branca.colormap import LinearColormap
 from collections import defaultdict
-
+import plotly.express as px
+import io
+import base64
+import plotly.graph_objects as go
 
 # Map functions
 def color_scale(dataframe, var):
@@ -13,13 +16,13 @@ def color_scale(dataframe, var):
     colormap = LinearColormap(['purple', 'blue', 'yellow', 'orange', 'red'], vmin=dataframe[var].min(), vmax=dataframe[var].max())
 
     # Create a dictionary to store colors for each unique pair of 'latitude' and 'longitude'
-    color_dict = defaultdict(str)
-    for index, row in dataframe.iterrows():
-        color = colormap(row[var])
-        # Store the color as a string in the format 'rgb(xxx,xxx,xxx)'
-        color_dict[(row['latitude'], row['longitude'])] = color
+    # color_dict = defaultdict(str)
+    # for index, row in dataframe.iterrows():
+    #     color = colormap(row[var])
+    #     # Store the color as a string in the format 'rgb(xxx,xxx,xxx)'
+    #     color_dict[(row['latitude'], row['longitude'])] = color
 
-    return [color_dict, colormap]
+    return colormap
 
 
 # Define a function to create the map
@@ -62,12 +65,13 @@ def create_map(df, color_dict, colormap):
         m.get_root().html.add_child(folium.Element(legend_html))
         folium.map.LayerControl('topleft', collapsed=False).add_to(m)
 
+        # Convert the Folium map to an HTML string
+        map_html = m.get_root().render()
+        return map_html 
     else:
         print("DataFrame is empty, cannot create the map.")
-
-    # Convert the Folium map to an HTML string
-    map_html = m.get_root().render()
-    return map_html 
+        return None
+    
 
 
 
@@ -118,50 +122,43 @@ def update_histogram(selected_year, selected_season, selected_var, north_data_ye
 
     return fig_NS, fig_EW
 
-
-
-
 def main():
-    # Import data
+    # Precompute colormap and initial dataset split outside the app
     path_filtered_data = './output/filtered_data.csv'
     df = pd.read_csv(path_filtered_data)
-    print('Crea colormap')
 
-    # Assuming df contains 'year', 'month', and 'day' columns
-    years = df['year'].unique()
-    months = df['month'].unique()
-    days = df['day'].unique()
-
-
-    # Map initialization:
-    # Create a color scale
-    color_dict = defaultdict(str)
-    [color_dict, colormap] = color_scale(df, 'TS')
-    print('Colormap creata')
+    # Create colormap and split dataset
+    colormap = color_scale(df, 'TS')
+    north_data, south_data, east_data, west_data = divide_dataset(df)
     
-    # Histogram initialization
-    df['year'] = df['year'].astype(str)
-    
-    # Devide dataset depending on the position of the measurment
+
+    # Divide dataset depending on the position of the measurement
     [north_data, south_data, east_data, west_data] = divide_dataset(df)
 
-    # Groupby Each dataset for year
+    # Groupby each dataset for the year
     north_data_year = north_data.groupby('year')
     south_data_year = south_data.groupby('year')
     east_data_year = east_data.groupby('year')
     west_data_year = west_data.groupby('year')
 
-    
+    # Retrieve all column names
+    all_columns = df.columns.tolist()
+
+    # Columns to be removed
+    columns_to_remove = ['codigo_ibge', 'latitude', 'longitude', 'year', 'month', 'day', 'season', 'name_ibge']
+
+    # Create a list of variables starting from the column of a DataFrame deleting some of them
+    variables = [col for col in all_columns if col not in columns_to_remove]
+
 
     # Initialize the Dash app
     app = dash.Dash(__name__)
 
-    
     # Define the layout of the dashboard
     app.layout = html.Div([
         html.H1("Agroclimatology - Paranà (Brazil)"),
 
-        # Dropdown for selecting the year
+        # Dropdowns for year, month, and day
         html.Div([
             html.Label('Select Year:'),
             dcc.Dropdown(
@@ -190,51 +187,84 @@ def main():
                 value=df['day'].min()  # Initial value for the dropdown
             )
         ]),
-
         
+        # Dropdown for selecting the season
+        html.Div([
+            html.Label('Select Season:'),
+            dcc.Dropdown(
+                id='season-dropdown',
+                options=[{'label': season, 'value': season} for season in df['season'].unique()],
+                value='Winter'  # Initial value for the dropdown
+            )
+        ]),
+
+        # Dropdown for selecting variable
+        html.Div([
+            html.Label('Select Varible:'),
+            dcc.Dropdown(
+                id='var-dropdown',
+                options=[{'label': var, 'value': var} for var in variables],
+                value= variables[0]  # Initial value for the dropdown
+            )
+        ]),
 
         # Map component
         html.Iframe(id='map-iframe', width='100%', height='600'),
 
+        dcc.Graph(
+            id='north-hist',
+            config={'displayModeBar': False}
+        ),
+        dcc.Graph(
+            id='east-hist',
+            config={'displayModeBar': False}
+        ),
     ])
 
+    # Update callback
     @app.callback(
-        Output('map-iframe', 'srcDoc'),
-        Input('year-dropdown', 'value'),
-        Input('month-dropdown', 'value'),
-        Input('day-dropdown', 'value')
+        [Output('map-iframe', 'srcDoc'),
+         Output('north-hist', 'figure'),
+         Output('east-hist', 'figure')],
+        [Input('year-dropdown', 'value'),
+         Input('month-dropdown', 'value'),
+         Input('day-dropdown', 'value'),
+         Input('season-dropdown', 'value'),
+         Input('var-dropdown', 'value')]
     )
 
-    def update_map(selected_year, selected_month, selected_day):
-
-        # df['year'] = df['year'].astype(str)
-        # df['month'] = df['month'].astype(str) 
-        # df['day'] = df['day'].astype(str)
-
+    def update_map_and_graph(selected_year, selected_month, selected_day, selected_season, selected_var):
+        # Map:
         df['year'] = df['year'].astype(int)
         df['month'] = df['month'].astype(int) 
         df['day'] = df['day'].astype(int)
-
-        filtered_data = df[(df['year'] == selected_year) & (df['month'] == selected_month) & (df['day'] == selected_day)]
         
+        filtered_data = df[
+            (df['year'] == selected_year) &
+            (df['month'] == selected_month) &
+            (df['day'] == selected_day)
+        ]
+
         if not filtered_data.empty:
-            color_dict = defaultdict(str)
+            color_dict_filtered = defaultdict(str)
             for index, row in filtered_data.iterrows():
-                color = colormap(row['TS'])  # Assuming 'TS' is the temperature data in your DataFrame
-                color_dict[(row['latitude'], row['longitude'])] = color
+                color = colormap(row['TS'])
+                color_dict_filtered[(row['latitude'], row['longitude'])] = color
 
             subdata_unique_coord = filtered_data[['name_ibge', 'latitude', 'longitude']].drop_duplicates()
-            map_html = create_map(subdata_unique_coord, color_dict, colormap)
-            print(type(map_html))
-            return map_html
+            map_html = create_map(subdata_unique_coord, color_dict_filtered, colormap)
+            
 
         else:
             empty_data = pd.DataFrame(columns=['latitude', 'longitude'])
-            return create_map(empty_data, defaultdict(str), colormap)
+            map_html =  create_map(empty_data, defaultdict(str), colormap), fig_NS, fig_EW
 
+        # Histogram:
+        fig_NS, fig_EW = update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
+        return map_html, fig_NS, fig_EW
+    # Run the app
     if __name__ == '__main__':
         app.run_server(debug=True)
-
 
 if __name__ == '__main__':
     main()
