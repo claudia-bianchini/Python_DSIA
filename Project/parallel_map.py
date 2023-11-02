@@ -11,22 +11,17 @@ import base64
 import plotly.graph_objects as go
 
 # Map functions
-def color_scale(dataframe, var):
-    # Create a LinearColormap with colors 'yellow', 'orange', and 'red' based on the range of 'var' means
-    colormap = LinearColormap(['purple', 'blue', 'yellow', 'orange', 'red'], vmin=dataframe[var].min(), vmax=dataframe[var].max())
-
-    # Create a dictionary to store colors for each unique pair of 'latitude' and 'longitude'
-    # color_dict = defaultdict(str)
-    # for index, row in dataframe.iterrows():
-    #     color = colormap(row[var])
-    #     # Store the color as a string in the format 'rgb(xxx,xxx,xxx)'
-    #     color_dict[(row['latitude'], row['longitude'])] = color
-
-    return colormap
+def generate_colormaps(df, variables):
+    colormaps = {}
+    for column in df.columns:
+        if column in variables and df[column].dtype in [int, float]:
+            # Assuming numeric columns should have a LinearColormap
+            colormaps[column] = LinearColormap(['purple', 'blue', 'yellow', 'orange', 'red'], vmin=df[column].min(), vmax=df[column].max())
+    return colormaps
 
 
 # Define a function to create the map
-def create_map(df, color_dict, colormap):
+def create_map(df, color_dict, colormap, selected_var):
     if not df.empty:
         m = folium.Map(
             location=[df.iloc[1]['latitude'], df.iloc[1]['longitude']],
@@ -50,7 +45,7 @@ def create_map(df, color_dict, colormap):
 
         # Add the colormap to the map
         colormap.add_to(m)
-        colormap.caption = f'Average Skin Earth temperature \'TS\' in [°C]'
+        colormap.caption = f'{selected_var} range'
 
         # Define a custom HTML legend
         legend_html = """
@@ -73,7 +68,31 @@ def create_map(df, color_dict, colormap):
         return None
     
 
+def update_map(df, selected_year, selected_month, selected_day, selected_var, colormap):
+    df['year'] = df['year'].astype(int)
+    df['month'] = df['month'].astype(int)
+    df['day'] = df['day'].astype(int)
 
+    filtered_data = df[
+        (df['year'] == selected_year) &
+        (df['month'] == selected_month) &
+        (df['day'] == selected_day)
+    ]
+
+    color_dict_filtered = defaultdict(str)
+    if not filtered_data.empty:
+        for index, row in filtered_data.iterrows():
+            color = colormap[selected_var](row[selected_var])
+            color_dict_filtered[(row['latitude'], row['longitude'])] = color
+
+        subdata_unique_coord = filtered_data[['name_ibge', 'latitude', 'longitude']].drop_duplicates()
+        map_html = create_map(subdata_unique_coord, color_dict_filtered, colormap[selected_var], selected_var)
+
+    else:
+        empty_data = pd.DataFrame(columns=['latitude', 'longitude'])
+        map_html = create_map(empty_data, color_dict_filtered, colormap[selected_var], selected_var)
+
+    return map_html
 
 # Histograms functions
 def divide_dataset(df):
@@ -127,8 +146,16 @@ def main():
     path_filtered_data = './output/filtered_data.csv'
     df = pd.read_csv(path_filtered_data)
 
+    # Retrieve all column names
+    all_columns = df.columns.tolist()
+    # Columns to be removed
+    columns_to_remove = ['codigo_ibge', 'latitude', 'longitude', 'year', 'month', 'day', 'season', 'name_ibge']
+    # Create a list of variables starting from the column of a DataFrame deleting some of them
+    variables = [col for col in all_columns if col not in columns_to_remove]
+
+
     # Create colormap and split dataset
-    colormap = color_scale(df, 'TS')
+    colormap = generate_colormaps(df, variables)
     north_data, south_data, east_data, west_data = divide_dataset(df)
     
 
@@ -141,15 +168,7 @@ def main():
     east_data_year = east_data.groupby('year')
     west_data_year = west_data.groupby('year')
 
-    # Retrieve all column names
-    all_columns = df.columns.tolist()
-
-    # Columns to be removed
-    columns_to_remove = ['codigo_ibge', 'latitude', 'longitude', 'year', 'month', 'day', 'season', 'name_ibge']
-
-    # Create a list of variables starting from the column of a DataFrame deleting some of them
-    variables = [col for col in all_columns if col not in columns_to_remove]
-
+    
 
     # Initialize the Dash app
     app = dash.Dash(__name__)
@@ -235,33 +254,13 @@ def main():
 
     def update_map_and_graph(selected_year, selected_month, selected_day, selected_season, selected_var):
         # Map:
-        df['year'] = df['year'].astype(int)
-        df['month'] = df['month'].astype(int) 
-        df['day'] = df['day'].astype(int)
+        map_html = update_map(df, selected_year, selected_month, selected_day, selected_var, colormap)
         
-        filtered_data = df[
-            (df['year'] == selected_year) &
-            (df['month'] == selected_month) &
-            (df['day'] == selected_day)
-        ]
-
-        if not filtered_data.empty:
-            color_dict_filtered = defaultdict(str)
-            for index, row in filtered_data.iterrows():
-                color = colormap(row['TS'])
-                color_dict_filtered[(row['latitude'], row['longitude'])] = color
-
-            subdata_unique_coord = filtered_data[['name_ibge', 'latitude', 'longitude']].drop_duplicates()
-            map_html = create_map(subdata_unique_coord, color_dict_filtered, colormap)
-            
-
-        else:
-            empty_data = pd.DataFrame(columns=['latitude', 'longitude'])
-            map_html =  create_map(empty_data, defaultdict(str), colormap), fig_NS, fig_EW
-
         # Histogram:
         fig_NS, fig_EW = update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
+        
         return map_html, fig_NS, fig_EW
+    
     # Run the app
     if __name__ == '__main__':
         app.run_server(debug=True)
