@@ -76,8 +76,6 @@ def create_map(df, color_dict, colormap):
 
 
 
-# ... (Previous code remains the same)
-
 def main():
     # Import data
     path_filtered_data = './output/filtered_data.csv'
@@ -95,48 +93,44 @@ def main():
     years = df['year'].unique()
     months = df['month'].unique()
     days = df['day'].unique()
-    data = pd.date_range(start='2023-01-01', end='2023-12-31')
-    formatted_dates = [date.strftime('%m-%d') for date in data]
-    # # Create marks for the slider based on months and days
-    # slider_marks = {
-    # str(year): {
-    #         str(month): {str(i): str(i) for i in range(1, pd.Timestamp(year=int(year), month=int(month), day=1).days_in_month + 1)} 
-    #         for month in range(1, 13)
-    #     }
-    #     for year in years
-    # }
+    
 
-    # Define the layout of the dashboard
+  # Define the layout of the dashboard
     app.layout = html.Div([
-        html.H1("Dashboard with Map"),
-        dcc.Dropdown(
-            id='year-dropdown',
-            options=[{'label': year, 'value': year} for year in df['year'].unique()],
-            # value=df['year'].unique()[0]  # Initial value for the dropdown
-            value=df['year'].min()  # Initial value for the dropdown
-        ),
+        html.H1("Agroclimatology - Paranà (Brazil)"),
 
-        # # Slider to select a year and month and move along the days
-        # dcc.Slider(
-        #     id='date-slider',
-        #     min=int(min(years)) * 100 + int(min(months)),
-        #     max=int(max(years)) * 100 + int(max(months)),
-        #     marks=slider_marks,
-        #     value=int(min(years)) * 100 + int(min(months)),  # Initial value for the slider
-        #     step=1
-        # ),
+        # Dropdown for selecting the year
+        html.Div([
+            html.Label('Select Year:'),
+            dcc.Dropdown(
+                id='year-dropdown',
+                options=[{'label': year, 'value': year} for year in df['year'].unique()],
+                value=df['year'].min()  # Initial value for the dropdown
+            )
+        ]),
 
-        html.Div(id='display-selected-day'),
-        dcc.Slider(
-            id='day-slider',
-            min=0,
-            max=len(data) - 1,
-            marks={i: str(date.strftime('%m-%d')) for i, date in enumerate(formatted_dates)},
-            value=0,  # Initial value for the slider
-            step=1
-        ),
-        # # Displaying the selected year, month, and day
-        # html.Div(id='display-selected-date'),
+        # Dropdown for selecting the month
+        html.Div([
+            html.Label('Select Month:'),
+            dcc.Dropdown(
+                id='month-dropdown',
+                options=[{'label': month, 'value': month} for month in df['month'].unique()],
+                value=df['month'].min()  # Initial value for the dropdown
+            )
+        ]),
+
+        # Dropdown for selecting the day
+        html.Div([
+            html.Label('Select Day:'),
+            dcc.Dropdown(
+                id='day-dropdown',
+                options=[{'label': day, 'value': day} for day in df['day'].unique()],
+                value=df['day'].min()  # Initial value for the dropdown
+            )
+        ]),
+
+        # Displaying the selected year, month, and day
+        # html.Div(id='display-selected-day'),
 
         # Map component
         html.Iframe(id='map-iframe', width='100%', height='600')
@@ -144,20 +138,17 @@ def main():
 
     @app.callback(
         Output('map-iframe', 'srcDoc'),
-        Output('display-selected-day', 'children'),
         Input('year-dropdown', 'value'),
-        Input('day-slider', 'value')
+        Input('month-dropdown', 'value'),
+        Input('day-dropdown', 'value')
     )
-    def update_map(selected_year, selected_day):
+
+    def update_map(selected_year, selected_month, selected_day):
 
         df['year'] = df['year'].astype(int)
         df['month'] = df['month'].astype(int) 
         df['day'] = df['day'].astype(int)
 
-        # Filter the data based on the selected year, month, and day
-        date = datetime.strptime(selected_day, '%m-%d')
-        month = date.strftime('%m')  # Ottieni il mese come stringa '01'
-        day = date.strftime('%d')    # Ottieni il giorno come stringa '12'
         filtered_data = df[(df['year'] == selected_year) & (df['month'] == selected_month) & (df['day'] == selected_day)]
         
         if not filtered_data.empty:
@@ -167,12 +158,13 @@ def main():
                 color_dict[(row['latitude'], row['longitude'])] = color
 
             subdata_unique_coord = filtered_data[['name_ibge', 'latitude', 'longitude']].drop_duplicates()
-            
-            return create_map(subdata_unique_coord, color_dict, colormap), f"Selected Date: {selected_year}/{selected_month}"
+            map_html = create_map(subdata_unique_coord, color_dict, colormap)
+            print(type(map_html))
+            return map_html
 
         else:
             empty_data = pd.DataFrame(columns=['latitude', 'longitude'])
-            return create_map(empty_data, defaultdict(str), colormap), f"No data for {selected_year}/{selected_month}"
+            return create_map(empty_data, defaultdict(str), colormap)
 
     if __name__ == '__main__':
         app.run_server(debug=True)
