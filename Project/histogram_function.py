@@ -84,8 +84,8 @@ def histo():
     north_TS_winter = north_data_year.get_group('2004')[north_data_year.get_group('2004')['season'] == 'Winter']['TS']
     south_TS_winter = south_data_year.get_group('2004')[south_data_year.get_group('2004')['season'] == 'Winter']['TS']
 
-    east_TS_winter = east_data_year.get_group('2004')[east_data_year.get_group('2015')['season'] == 'Winter']['TS']
-    west_TS_winter = west_data_year.get_group('2004')[west_data_year.get_group('2015')['season'] == 'Winter']['TS']
+    east_TS_winter = east_data_year.get_group('2004')[east_data_year.get_group('2004')['season'] == 'Winter']['TS']
+    west_TS_winter = west_data_year.get_group('2004')[west_data_year.get_group('2004')['season'] == 'Winter']['TS']
 
  
     plotting(north_TS_winter, south_TS_winter, east_TS_winter, west_TS_winter)
