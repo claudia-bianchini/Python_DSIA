@@ -10,6 +10,9 @@ import io
 import base64
 import plotly.graph_objects as go
 
+
+from plotly.subplots import make_subplots
+
 # Map functions
 def generate_colormaps(df, variables):
     colormaps = {}
@@ -121,27 +124,65 @@ def divide_dataset(df):
     return [north_data, south_data, east_data, west_data]
 
 def update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year):
-    north_var_season = north_data_year.get_group(selected_year)[north_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
-    south_var_season = south_data_year.get_group(selected_year)[south_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
-    east_var_season = east_data_year.get_group(selected_year)[east_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
-    west_var_season = west_data_year.get_group(selected_year)[west_data_year.get_group(selected_year)['season'] == selected_season][selected_var]
+    fig = make_subplots(rows=1, cols=2, subplot_titles=('North vs South', 'East vs West'))
 
-    # Create histograms using Plotly graph objects
-    fig_NS = go.Figure()
-    fig_NS.add_trace(go.Histogram(x=north_var_season, name='North', marker_color = 'rgba(100, 0, 0, 0.5)', opacity = 0.6))
-    fig_NS.add_trace(go.Histogram(x=south_var_season, name='South', marker_color = 'rgba(0, 100, 0, 0.5)', opacity = 0.6))
+    for direction, data_year in zip(['North', 'South', 'East', 'West'], [north_data_year, south_data_year, east_data_year, west_data_year]):
+        direction_var_season = data_year.get_group(selected_year)[data_year.get_group(selected_year)['season'] == selected_season][selected_var]
 
-    fig_NS.update_layout(barmode='overlay', title=f'Year {selected_year}: {selected_var} Variation in North vs South Regions {selected_season}', xaxis_title=selected_var, yaxis_title='Events')
+        if direction in ['North', 'South']:
+            fig_num = 1
+            opposite_direction = 'South' if direction == 'North' else 'North'
+            # Set the color for North and South
+            color = 'blue' if direction == 'North' else 'orange'
+        else:
+            fig_num = 2
+            opposite_direction = 'West' if direction == 'East' else 'East'
+            # Set the color for East and West
+            color = 'green' if direction == 'East' else 'red'
 
-    fig_EW = go.Figure()
-    fig_EW.add_trace(go.Histogram(x=east_var_season, name='East', marker_color='rgba(100, 0, 0, 0.5)', opacity = 0.6))
-    fig_EW.add_trace(go.Histogram(x=west_var_season, name='West', marker_color='rgba(0, 100, 0, 0.5)', opacity = 0.6))
+        fig.add_trace(go.Histogram(x=direction_var_season, name=direction, marker_color=color, opacity=0.4), row=1, col=fig_num)
 
-    fig_EW.update_layout(barmode='overlay', title=f'Year {selected_year}: {selected_var} Variation in East vs West Regions {selected_season}', xaxis_title=selected_var, yaxis_title='Events')
+    fig.update_layout(title=f'Year {selected_year}: {selected_var} Variation in Different Regions {selected_season}', xaxis_title=selected_var, yaxis_title='Events')
 
-    return fig_NS, fig_EW
+    return fig
 
-# ... (Previous code)
+
+def update_scatterplot(selected_var, df):
+    # Create a scatter plot
+    mean_var = df.groupby(['year', 'season'])[selected_var].mean().reset_index()
+
+    # Create the scatter plot using Plotly Express
+    scatter_fig = px.scatter(mean_var, x='year', y=f'{selected_var}', color='season', title=f'Mean {selected_var} by Season for Each Year')
+    scatter_fig.update_traces(marker=dict(size=12))  # Adjust marker size if needed
+
+    scatter_fig.update_layout(
+        updatemenus=[
+            {
+                'buttons': [
+                    {
+                        'method': 'restyle',
+                        'label': 'All Seasons',
+                        'args': [{'visible': [True] * len(mean_var['season'].unique())}]  # Set the visibility of all traces
+                    },
+                    *[
+                        {
+                            'method': 'restyle',
+                            'label': season,
+                            'args': [
+                                {'visible': [True if s == season else False for s in mean_var['season']]}
+                            ]
+                        } for season in mean_var['season'].unique()
+                    ]
+                ],
+                'direction': 'down',
+                'showactive': True,
+            }
+        ]
+    )
+    return scatter_fig
+
+
+
 
 def main():
     # Precompute colormap and initial dataset split outside the app
@@ -237,22 +278,29 @@ def main():
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
         
-
+        # Histograms plot
         dcc.Graph(
             id='north-hist',
             config={'displayModeBar': False}
         ),
+        # dcc.Graph(
+        #     id='east-hist',
+        #     config={'displayModeBar': False}
+        # ),
+
+        # Scatterplot
         dcc.Graph(
-            id='east-hist',
+            id='scatter-plot',
             config={'displayModeBar': False}
-        ),
+        ), 
     ], style={'font-family': 'Arial, sans-serif', 'margin': '20px'})  # Define font-family and set margin for the entire layout
 
     # Update callback
     @app.callback(
         [Output('map-iframe', 'srcDoc'),
          Output('north-hist', 'figure'),
-         Output('east-hist', 'figure')],
+         # Output('east-hist', 'figure'),
+         Output('scatter-plot', 'figure')],
         [Input('year-dropdown', 'value'),
          Input('month-dropdown', 'value'),
          Input('day-dropdown', 'value'),
@@ -264,9 +312,13 @@ def main():
         map_html = update_map(df, selected_year, selected_month, selected_day, selected_var, colormap)
         
         # Histogram:
-        fig_NS, fig_EW = update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
+        # fig_NS, fig_EW = update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
+        fig= update_histogram(selected_year, selected_season, selected_var, north_data_year, south_data_year, east_data_year, west_data_year)
         
-        return map_html, fig_NS, fig_EW
+        # Scatterplot
+        scatter_fig = update_scatterplot(selected_var, df)
+   
+        return map_html, fig, scatter_fig
     
     # Run the app
     if __name__ == '__main__':
