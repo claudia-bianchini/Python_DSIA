@@ -23,6 +23,7 @@ from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 
 from plotly.subplots import make_subplots
+from sub_data import find_normalized_productivity, normalize_values, divide_dataset, productivity_to_df
 
 # Map functions
 def generate_colormaps(df, variables):
@@ -43,39 +44,6 @@ def generate_colormaps(df, variables):
             colormaps[column] = LinearColormap(['purple', 'blue', 'yellow', 'orange', 'red'], vmin=df[column].min(), vmax=df[column].max())
     return colormaps
 
-def find_normalized_productivity(sub_data_unique_coord, df_soja, selected_year):
-    # Check if 'name_ibge' column exists in sub_data_unique_coord and 'name' column exists in df_soja
-    if 'name_ibge' in sub_data_unique_coord.columns and 'name' in df_soja.columns:
-        # Merge the dataframes based on the condition name_ibge == name
-        merged_df = sub_data_unique_coord.merge(df_soja[['name', selected_year]], left_on='name_ibge', right_on='name', how='left')
-
-        # Rename the selected_year column to a unique name (avoid name conflicts)
-        merged_df = merged_df.rename(columns={selected_year: 'productivity'})
-
-        # Return the updated DataFrame
-        return merged_df
-    else:
-        # If 'name_ibge' or 'name' columns don't exist in respective DataFrames
-        print("'name_ibge' column not found in sub_data_unique_coord or 'name' column not found in df_soja.")
-        return sub_data_unique_coord  # Return the original DataFrame
-
-
-
-def normalize_values(data, new_min, new_max):
-    # Stampa le somme dei valori per ciascuna colonna
-    all_values = []
-    for key, value in data.items():
-        all_values.append(value)
-
-    min_val = min(all_values)
-    max_val = max(all_values)
-    
-    normalized = {}
-    for key, value in data.items():
-        normalized_value = new_min + (value - min_val) * (new_max - new_min) / (max_val - min_val)
-        normalized[key] = normalized_value
-
-    return normalized
 
 # Define a function to create the map
 def create_map(df, color_dict, colormap, selected_var, variable_details):
@@ -184,41 +152,6 @@ def update_map(df, df_soja, selected_year, selected_month, selected_day, selecte
     return map_html
 
 # Histograms functions
-def divide_dataset(df):
-    """
-    Divide the dataset into north, south, east, and west regions based on coordinates.
-
-    Args:
-    - df (pd.DataFrame): The DataFrame with geographical data.
-
-    Returns:
-    - list: List of DataFrames for north, south, east, and west regions.
-    """
-    # Extract latitude and longitude
-    latitudes = df['latitude']
-    longitudes = df['longitude']
-
-    # Calculate the most northern, southern, eastern, and western coordinates
-    most_north = latitudes.max()
-    most_south = latitudes.min()
-    most_east = longitudes.min()
-    most_west = longitudes.max()
-
-    # Calculate average latitude and longitude
-    average_lat = (most_north + most_south) / 2
-    average_long = (most_east + most_west) / 2
-
-    # Split the data into north and south regions based on latitude
-    north_data = df[df['latitude'] <= average_lat]
-    south_data = df[df['latitude'] > average_lat]
-
-    # Split the data into north and south regions based on longitudes
-    east_data = df[df['longitude'] >= average_long]
-    west_data = df[df['longitude'] < average_long]
-    
-    return [north_data, south_data, east_data, west_data]
-
-
 def update_histogram(selected_year, selected_season, selected_var, variable_details, north_data_year, south_data_year, east_data_year, west_data_year):
     fig_north_south = go.Figure()
     fig_east_west = go.Figure()
@@ -374,62 +307,23 @@ def update_lineplot(selected_var, variable_details, df, df_soja):
 
 
 
-def productivity_to_df(df, df_soja):
-    # DROPPA COLONNE PRIMA DI FARE CIO'
-    #print(df.columns)
-    subdata_unique_name_year = df[['name_ibge', 'year', 'latitude', 'longitude']].drop_duplicates()
-    # print(f'subdata_unique_name_year = ', subdata_unique_name_year)
-    #print(df_soja)
-    # Merging dataframes
-    subdata_unique_name_year = pd.merge(subdata_unique_name_year, df_soja, left_on='name_ibge', right_on='name', how='left')
-     # for row in merged_df.itertuples():
-    #     if str(row.year) in merged_df.columns:
-    #         df.at[row.Index, 'productivity'] = merged_df.at[row.Index, str(row.year)]
-
-    
-    # Filter out the columns from 'df_soja' that contain the numeric values
-    year_columns = df_soja.columns[3:]
-    # print(year_columns)
-    # Create an empty list to store productivity values
-    productivity_data = pd.DataFrame(columns = ['name_ibge', 'latitude', 'longitude', 'year','productivity'])
-    # Iterate through the merged dataframe and check for matches
-    for index, row in subdata_unique_name_year.iterrows():
-        for col in year_columns:
-            # print(row['year'], row[col])
-            # print(type(row['year']), type(row[col]))
-            if row['year'] == col:
-                productivity_data.loc[index] = [row['name_ibge'], row['latitude'], row['longitude'], row['year'], row[col]]
-
-    # Assign the obtained productivity values to the 'productivity' column in 'df'
-    #subdata_unique_name_year['productivity'] = productivity_values
-
-    print(f'prod-val: {productivity_data}')
-    return productivity_data
-
-
 
 def Remove_Outlier_Indices(df):
-    Q01 = df.quantile(0.25)
-    Q09 = df.quantile(0.75)
-    IQR = Q09 - Q01
-    trueList = ~((df < (Q01 - 1.5 * IQR)) |(df > (Q09 + 1.5 * IQR)))
+    Q25 = df.quantile(0.25)
+    Q75 = df.quantile(0.75)
+    IQR = Q75 - Q25
+    trueList = ~((df < (Q25 - 1.5 * IQR)) |(df > (Q75 + 1.5 * IQR)))
     return trueList
 
 
-
-# NON è UN GRAFICO DINAMICO!Togli da dinamicità
 def update_lineplot2(df, df_soja):
-    #print(f'north data: ', north_data)
-    north_data = df
-    # Drow two plot, you can select if you want to see north-south or west-east
     productivity_data = productivity_to_df(df, df_soja)
-    # Index List of Non-Outliers
     nonOutlierList_north = Remove_Outlier_Indices(productivity_data['productivity'])
-    # Non-Outlier Subset of the Given Dataset
     productivity_data = productivity_data[nonOutlierList_north]
 
     # Filter data for training (years up to 2017) and prediction (years after 2017)
-    prediction_data = pd.DataFrame({'year': [2018, 2019, 2020]})
+    max_prod_year = int(productivity_data['year'].max())
+    prediction_data = pd.DataFrame({'year': [max_prod_year+1, max_prod_year+2, max_prod_year+3]})
 
     # Ensure 'year' is treated as numeric
     productivity_data['year'] = pd.to_numeric(productivity_data['year'])

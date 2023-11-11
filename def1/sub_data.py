@@ -1,3 +1,29 @@
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+from dash import dash_table
+from dash.dash_table.Format import Group
+import pandas as pd
+import folium
+from branca.colormap import LinearColormap
+from collections import defaultdict
+import plotly.express as px
+import io
+import base64
+import plotly.graph_objects as go
+
+
+import numpy as np
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+
+import warnings
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
+
+
+from plotly.subplots import make_subplots
+
 def find_normalized_productivity(sub_data_unique_coord, df_soja, selected_year):
     # Check if 'name_ibge' column exists in sub_data_unique_coord and 'name' column exists in df_soja
     if 'name_ibge' in sub_data_unique_coord.columns and 'name' in df_soja.columns:
@@ -33,7 +59,7 @@ def normalize_values(data, new_min, new_max):
     return normalized
 
 
-    def divide_dataset(df):
+def divide_dataset(df):
     """
     Divide the dataset into north, south, east, and west regions based on coordinates.
 
@@ -67,19 +93,11 @@ def normalize_values(data, new_min, new_max):
     
     return [north_data, south_data, east_data, west_data]
 
-    def productivity_to_df(df, df_soja):
+def productivity_to_df(df, df_soja):
     # DROPPA COLONNE PRIMA DI FARE CIO'
-    #print(df.columns)
     subdata_unique_name_year = df[['name_ibge', 'year', 'latitude', 'longitude']].drop_duplicates()
-    # print(f'subdata_unique_name_year = ', subdata_unique_name_year)
-    #print(df_soja)
     # Merging dataframes
-    subdata_unique_name_year = pd.merge(subdata_unique_name_year, df_soja, left_on='name_ibge', right_on='name', how='left')
-     # for row in merged_df.itertuples():
-    #     if str(row.year) in merged_df.columns:
-    #         df.at[row.Index, 'productivity'] = merged_df.at[row.Index, str(row.year)]
-
-    
+    subdata_unique_name_year = pd.merge(subdata_unique_name_year, df_soja, left_on='name_ibge', right_on='name', how='left')    
     # Filter out the columns from 'df_soja' that contain the numeric values
     year_columns = df_soja.columns[3:]
     # print(year_columns)
@@ -93,8 +111,4 @@ def normalize_values(data, new_min, new_max):
             if row['year'] == col:
                 productivity_data.loc[index] = [row['name_ibge'], row['latitude'], row['longitude'], row['year'], row[col]]
 
-    # Assign the obtained productivity values to the 'productivity' column in 'df'
-    #subdata_unique_name_year['productivity'] = productivity_values
-
-    print(f'prod-val: {productivity_data}')
     return productivity_data
