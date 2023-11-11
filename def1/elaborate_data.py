@@ -1,3 +1,18 @@
+"""
+    Module for data processing and extraction from CSV files.
+
+    Provides functions for reading CSV files, filtering rows based on productivity years,
+    dropping unnecessary columns, assigning date-related columns, merging DataFrames,
+    and extracting a subfile with processed data.
+
+    Args:
+        directory (str): The directory path where CSV files are located.
+
+    Returns:
+        None
+"""
+
+
 import os
 import pandas as pd
 
@@ -168,22 +183,20 @@ def extract_subfile(input_folder, output_folder):
     # Define columns to keep in the DataFrame
     columns_to_keep = ['year', 'month', 'day', 
                       'codigo_ibge', 'latitude', 'longitude', 
-                      'TS', 'PS', 'GWETROOT'
+                      'TS', 'T2M', 'PS', 'GWETROOT',
+                      'PRECTOTCORR', 'ALLSKY_SFC_SW_DWN', 'CLRSKY_SFC_SW_DWN',
+                      'WS2M', 'WS10M'
                     ]
     # Drop columns not present in the 'columns_to_keep' list
     df = drop_columns(df, columns_to_keep)
-
     # Remove extra spaces in column names in the secondary DataFrame
     df_soja.rename(columns=lambda x: x.strip(), inplace=True)
     # Define the year range for filtering the DataFrame
     productivity_years = df_soja.columns[3:]
-
     # Filter the primary DataFrame based on the year range
     df = filter_rows(df, productivity_years)
-
     # Assign 'season' column based on 'month', and 'day'
-    df = assign_seasons(df)
-    
+    df = assign_seasons(df)    
     # Merge DataFrames to add the 'name_ibge' column
     df = add_name_ibge(df, df_soja)
     # Save the processed DataFrame to a CSV file

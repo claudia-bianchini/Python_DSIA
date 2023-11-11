@@ -1,3 +1,17 @@
+"""
+    Main module for the 'Project Bianchini Agroclimatology.'
+
+    This module orchestrates the entire project workflow, including creating the project directory,
+    checking and downloading the dataset, extracting relevant information, and visualizing the results through a dashboard.
+
+    Args:
+        None
+
+    Returns:
+        None
+"""
+
+
 import os
 import dash
 from download_data import dataset_check_download

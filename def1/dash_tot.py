@@ -486,8 +486,14 @@ def create_dash(df, df_soja):
     
     variable_details = {
         'TS': ['Earth Skin Temperature', '°C'],
-        'PS': ['Surface Pressure', '??'],
+        'T2M': ['Temperature at 2 Meters', '°C'],
+        'PS': ['Surface Pressure', 'kPa'],
         'GWETROOT': ['Root Zone Soil Wetness', '%'],
+        'PRECTOTCORR': ['Precipitation Corrected', '??'],
+        'ALLSKY_SFC_SW_DWN': ['All Sky Surface Shortwave Downward Irradiance', '??'],
+        'CLRSKY_SFC_SW_DWN': ['Clear Sky Surface Shortwave Downward Irradiance', '??'],
+        'WS2M': ['Wind Speed at 2 Meters', '??'],
+        'WS10M': ['Wind Speed at 10 Meters', '??'],
     }
     
     # Create colormap and split dataset
