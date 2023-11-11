@@ -29,31 +29,6 @@ def find_and_read_csv(directory):
     return df, df_soja  # Return the DataFrames for the largest and smallest CSV files
 
 
-# def filter_rows(dataframe, productivity_years):
-#     """
-#     Filter rows in the DataFrame based on a range of years.
-
-#     Args:
-#     - dataframe (pd.DataFrame): The DataFrame to filter.
-#     - range_years (tuple): A tuple containing the start and end years for filtering.
-
-#     Returns:
-#     - pd.DataFrame: Filtered DataFrame based on the specified year range.
-#     """
-#     try:
-#         # Convert the 'year' column to numeric values
-#         dataframe['year'] = pd.to_numeric(dataframe['year'], errors='coerce')
-#         # Create a boolean mask to filter rows based on the year range
-#         filtered_index = dataframe['year'].between(*range_years)
-#         # Apply the boolean mask to filter the DataFrame
-#         filtered_dataframe = dataframe[filtered_index].copy()
-#         # Convert the 'year' column back to string type
-#         filtered_dataframe['year'] = filtered_dataframe['year'].astype(str)
-#         return filtered_dataframe  # Return the filtered DataFrame
-#     except KeyError as e:
-#         print(f"Error: {e}. 'year' column not found.")
-#         return pd.DataFrame()  # Return an empty DataFrame in case of an error
-
 def filter_rows(dataframe, productivity_years):
     """
     Filter rows in the DataFrame based on a specified list of productivity years.
@@ -201,15 +176,12 @@ def extract_subfile(input_folder, output_folder):
     # Remove extra spaces in column names in the secondary DataFrame
     df_soja.rename(columns=lambda x: x.strip(), inplace=True)
     # Define the year range for filtering the DataFrame
-    productivity_years = df_soja.columns[3:]  # Seleziona solo le colonne degli anni
-    print(productivity_years)
-    # year_values = [col for col in selected_years]  # Ottieni le stringhe degli anni
+    productivity_years = df_soja.columns[3:]
 
     # Filter the primary DataFrame based on the year range
     df = filter_rows(df, productivity_years)
 
     # Assign 'season' column based on 'month', and 'day'
-    print(df)
     df = assign_seasons(df)
     
     # Merge DataFrames to add the 'name_ibge' column

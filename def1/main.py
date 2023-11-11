@@ -1,9 +1,8 @@
 import os
 import dash
 from download_data import dataset_check_download
-from elaborate_2 import extract_subfile
+from elaborate_data import extract_subfile
 from dash_tot import create_dash
-
 
 
 
@@ -52,7 +51,6 @@ def read_config():
     return driver_path, binary_location
 
 def main():
-    print('start')
     # Create the workspace
     desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
     project_path = os.path.join(desktop, 'Project Bianchini Agroclimatology')
@@ -67,15 +65,14 @@ def main():
       'agroclimatology-data-of-the-state-of-paran-br/data'
     
     # Read user configuraion in file config.txt
-    # driver_path, binary_location = read_config()
+    driver_path, binary_location = read_config()
     
     # Look for the dataset: it is dowloaded, it is updated, eventually download it
-    # dataset_check_download(url, input_folder_path, output_folder_path, driver_path, binary_location)
+    dataset_check_download(url, input_folder_path, output_folder_path, driver_path, binary_location)
 
     # Adjust the dataset by extracting a subfile with interested information
     df, df_soja = extract_subfile(input_folder_path, output_folder_path)
-
-    
+ 
     # Create a dashboard to visualize the resut
     app = create_dash(df, df_soja)
     

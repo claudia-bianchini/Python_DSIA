@@ -34,6 +34,7 @@ def initialize_driver(local_directory, chrome_driver_path, chrome_binary_locatio
     driver = webdriver.Chrome(options=options)
     return driver
 
+
 def find_last_update(url, driver):
     """
     Find the last update date on a webpage.
@@ -49,13 +50,14 @@ def find_last_update(url, driver):
     wait = WebDriverWait(driver, 10)
 
     try:
-        css_selector = '#site-content > div.sc-dQelHR.iMCzUG > div > div.sc-kriKqB.bdptWe > '\
-                        'div.sc-jIXSKn.bdYZfJ > span > span:nth-child(2) > span'
+        # css_selector = '#site-content > div.sc-dQelHR.iMCzUG > div > div.sc-kriKqB.bdptWe > div.sc-jIXSKn.bdYZfJ > span > span:nth-child(2) > span'
+        css_selector = '#site-content > div:nth-child(2) > div > div > div.sc-kriKqB.bdptWe > div.sc-jIXSKn.bdYZfJ > span > span:nth-child(2) > span'
         target_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         return target_element.text
 
     except TimeoutException:
         return None
+
 
 
 def check_last_update(update_date, url, driver, input_directory, output_directory):
@@ -71,7 +73,7 @@ def check_last_update(update_date, url, driver, input_directory, output_director
     Returns:
         str: Name of the downloaded ZIP file.
     """
-    filename = 'last_updat.txt'
+    filename = 'last_update.txt'
 
     last_update_path = os.path.join(output_directory, filename)
     try:
@@ -92,7 +94,7 @@ def check_last_update(update_date, url, driver, input_directory, output_director
         with open(last_update_path, "w", encoding="utf-8") as file:
             file.write(update_date)
             zip_file_name = download_dataset(url, driver, input_directory)
-
+    print(zip_file_name)
     return zip_file_name
 
 
@@ -108,6 +110,7 @@ def download_dataset(dataset_url, driver, local_directory):
     Returns:
         str: Name of the downloaded ZIP file.
     """
+    print('dowload_called')
     for filename in os.listdir(local_directory):
         file_path = os.path.join(local_directory, filename)
         try:
@@ -122,10 +125,10 @@ def download_dataset(dataset_url, driver, local_directory):
     wait = WebDriverWait(driver, 30)
     wait.until(EC.url_to_be(dataset_url))
 
-    download_button_selector = '#site-content > div.sc-dQelHR.iMCzUG > div > ' \
-                            'div.sc-kriKqB.bdptWe > div.sc-jIXSKn.bdYZfJ > div > a > button > span'
+    # download_button_selector = '#site-content > div.sc-dQelHR.iMCzUG > div > ' \
+    #                         'div.sc-kriKqB.bdptWe > div.sc-jIXSKn.bdYZfJ > div > a > button > span'
 
-
+    download_button_selector = '#site-content > div:nth-child(2) > div > div > div.sc-kriKqB.bdptWe > div.sc-jIXSKn.bdYZfJ > div > a > button'
     id_sign_in = '#site-container > div > div.sc-cmtnDe.WXA-DT > div.sc-lfeRdP.lgbEgp > '\
                   'div.sc-gglKJF.eeMhNC > div > div:nth-child(1) > a > button > span'
 
@@ -211,7 +214,9 @@ def dataset_check_download(url, input_folder_directory, output_folder_directory,
     downloading, and unzipping the dataset.
     """
     driver = initialize_driver(input_folder_directory, chrome_driver_path, chrome_binary_location)
+    zip_file_name = None
     data = find_last_update(url, driver)
+    
     if data: 
         zip_file_name = check_last_update(data, url, driver, input_folder_directory, output_folder_directory)
     else:
@@ -219,4 +224,3 @@ def dataset_check_download(url, input_folder_directory, output_folder_directory,
     
     if zip_file_name:
         unzip_file(input_folder_directory, zip_file_name) 
-

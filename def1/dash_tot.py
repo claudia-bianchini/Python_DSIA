@@ -390,13 +390,11 @@ def update_lineplot(selected_var, variable_details, df, df_soja):
     return scatter_fig
 
 
-
-
 def remove_outlier_indices(df):
-    q25 = df.quantile(0.25)
-    q75 = df.quantile(0.75)
-    iqr = q75 - q25
-    true_list = ~((df < (q25 - 1.5 * iqr)) | (df > (q75 + 1.5 * iqr)))
+    q_left = df.quantile(0.05)
+    q_right = df.quantile(0.95)
+    iqr = q_right - q_left
+    true_list = ~((df < (q_left - 1.5 * iqr)) | (df > (q_right + 1.5 * iqr)))
     return true_list
 
 def productivity_scatter_and_prediction(df, df_soja):
@@ -507,7 +505,6 @@ def create_dash(df, df_soja):
 
     # Static figure and table:
     intercept_fig, predictions_df = productivity_scatter_and_prediction(df, df_soja)
-    
     # Convert DataFrame to a list of dictionaries for the DataTable
     data_table = [{'name_ibge': row['name_ibge'], 'year': row['year'], 'predictions': row['predictions']} for index, row in predictions_df.iterrows()]
 
@@ -610,7 +607,8 @@ def create_dash(df, df_soja):
             ],
             style_table={'height': '300px', 'overflowY': 'auto', 'width': '60%', 'margin': 'auto'},  # Set height and add scroll if needed
             data=data_table,
-        )
+        ),
+
     ], style={'font-family': 'Arial, sans-serif', 'margin': '20px', 'background-color': 'white'})  # Define font-family and set margin for the entire layout
 
     # Update callback
