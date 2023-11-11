@@ -1,0 +1,2 @@
+C:/Users/claud/Documents/Chromedriver/chromedriver.exe
+C:/Program Files/Google/Chrome/Application/chrome.exe
